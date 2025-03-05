@@ -1,0 +1,5 @@
+-Q theories LambCal
+-arg -w -arg -notation-overridden
+
+theories/Lambda.v
+extraction/Extraction.v
