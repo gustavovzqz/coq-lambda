@@ -519,14 +519,14 @@ Qed.
 (* ================================================================= *)
 
 
-(** 7.0 Preservação *)
+(** 7.0 Confluence *)
 
 
-Theorem preservation : forall t t' T,
-  Has_Type [] t T ->
-  step t t'->
-  Has_Type [] t' T.
+Theorem confluence : forall t t1 t2, 
+  ~(value t1) ->
+  ~(value t2) ->
+  step t t1 ->
+  step t t2 -> 
+  exists t', step t1 t' /\ step t2 t'.
 Proof.
-  intros t t' T H H1. generalize dependent T. remember [] as G. induction H1; intros.
-  - subst. inversion H0. subst. inversion H4. subst.
-Abort.
+Admitted.
