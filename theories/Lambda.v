@@ -71,7 +71,7 @@ Fixpoint subst (x : string) (s : term) (t : term) :=
   match t with 
   | TM_var y => if String.eqb x y then s else t
   | TM_app t1 t2 => TM_app (subst x s t1) (subst x s t2)
-  | TM_abs y l t1 => if String.eqb y x then TM_abs y l t
+  | TM_abs y l t1 => if String.eqb y x then t
                   else TM_abs y l (subst x s t1)
   | TM_true => TM_true
   | TM_false => TM_false
@@ -519,14 +519,155 @@ Qed.
 (* ================================================================= *)
 
 
-(** 7.0 Confluence *)
+(** 7.0 Preservação  *)
 
 
-Theorem confluence : forall t t1 t2, 
-  ~(value t1) ->
-  ~(value t2) ->
-  step t t1 ->
-  step t t2 -> 
-  exists t', step t1 t' /\ step t2 t'.
+Definition included_in l l' := forall k v, 
+  find k l = Some v -> find k l' = Some v.
+
+Lemma included_in_add : forall h l l',
+  included_in l l' -> included_in (h :: l) (h :: l').
+Proof. 
+  unfold included_in. intros. simpl. simpl in H0. 
+  destruct h. destruct (s =? k).
+  - assumption.
+  - apply H. assumption.
+Qed.
+
+
+
+
+Lemma find_add_twice : forall s h h' G T,
+  fst h = fst h' ->
+  find s (h :: G) = T <->
+  find s (h :: (h' :: G)) = T.
 Proof.
+  intros. destruct h. destruct h'. split.
+  + intros H0. simpl in H. simpl in H0. simpl. destruct (s0 =? s) eqn:E.
+    ++ assumption.
+    ++ rewrite H in E. rewrite E. assumption.
+  + intros H0. simpl in H. simpl in H0. simpl.
+    destruct (s1 =? s) eqn:E.
+    ++ rewrite String.eqb_eq in E. rewrite E in H. rewrite <- String.eqb_eq in H.
+       subst. rewrite H. reflexivity.
+    ++ assumption.
+Qed.
+
+Lemma find_add_shadows : forall s h h' G T,
+  fst h <> fst h' ->
+  find s (h :: h' :: G)  =  T <->
+  find s (h':: h :: G) = T.
+Proof.
+  intros. destruct h. destruct h'. simpl in H. split.
+  + intros H0. simpl in H0. simpl. destruct (s1 =? s) eqn:E.
+    - rewrite String.eqb_eq in E. rewrite E in H. rewrite <- String.eqb_neq in H.
+    rewrite H in H0. assumption.
+    - assumption.
+  + intros H0. simpl in H0. simpl. destruct (s1 =? s) eqn:E.
+    - rewrite String.eqb_eq in E. rewrite E in H. rewrite <- String.eqb_neq in H.
+      rewrite H. assumption.
+    - assumption.
+Qed.
+
+Lemma included_in_refl : forall l, 
+  included_in l l.
+Proof.
+  unfold included_in. intros. assumption.
+Qed.
+
+
+Lemma weakening : forall G G' t T,
+  included_in G G' ->
+  Has_Type G  t T ->
+  Has_Type G' t T.
+Proof.
+  intros. generalize dependent G'. induction H0; eauto with lambda_db; intros.
+  assert (included_in ((x, A) :: G) ((x, A) :: G')).
+  { apply included_in_add, H. }
+  apply T_abs,IHHas_Type, H1.
+Qed.
+
+Lemma weakening_empty : forall G t T,
+  Has_Type [] t T ->
+  Has_Type G t T.
+Proof.
+  intros. eapply weakening with ([]).
+  - unfold included_in. intros;  discriminate.
+  - assumption.
+Qed.
+
+Hint Resolve find_add_shadows : lambda_db.
+Hint Resolve find_add_twice : lambda_db.
+
+
+(* Os dois teoremas abaixo são simples de verificar que são verdade:
+
+  1. O primeiro diz que se dois elementos para variáveis distintas forem adicionados no contexto,
+      então a ordem não faz diferença.
+
+   2. O segundo diz que se dois elementos para uma mesma variável são adicionados no contexto,
+   então o segundo sobrescreve o primeiro. 
+
+   O problema é que com o uso de listas como mapas parciais, fica difícil de conseguir uma 
+   propriedade indutiva forte o suficiente. *)
+
+Lemma Has_Type_Order : forall t T h h' G,
+  fst h <> fst h' ->
+  Has_Type (h :: (h':: G)) t T -> 
+  Has_Type (h':: (h :: G)) t T.
+Proof.
+  induction t; intros; inversion H0; eauto with lambda_db.
+  - subst. apply T_var. apply find_add_shadows in H3.
+    + assumption.
+    + admit.
+  - subst. apply T_abs. 
+    (* preso ... *)
 Admitted.
+
+ 
+
+
+Lemma Has_Type_Shadows : forall t T h h' G,
+  fst h = fst h' ->
+  Has_Type (h :: (h':: G)) t T -> 
+  Has_Type (h :: G) t T.
+Proof.
+  induction t; intros; inversion H0; eauto with lambda_db.
+  - apply T_var. simpl. admit.
+  - subst. apply T_abs.
+    (* Exatamente o mesmo problema que o anterior ... *)
+Admitted.
+
+
+Lemma substitution_aux : forall t Gamma x U  v T ,
+   Has_Type ((x, U) :: Gamma) t T ->
+   Has_Type [] v U ->
+   Has_Type Gamma (subst x v t) T.
+Proof.
+  induction t; intros;
+  inversion H; clear H; subst; simpl; eauto with lambda_db.
+    - inversion H3. destruct (x =? s). 
+      + injection H1 as H1. subst. apply weakening_empty, H0.
+      + apply T_var, H1.
+    - destruct (s =? x) eqn:E.
+      + apply T_abs. apply Has_Type_Shadows with (x, U).
+        ++ simpl. rewrite String.eqb_eq in E. assumption.
+        ++ assumption.
+      + apply T_abs. apply IHt with (U); try assumption.
+        apply Has_Type_Order. 
+        ++ rewrite String.eqb_neq in E. simpl. assumption.
+        ++ assumption.
+Qed.
+
+Theorem preservation: forall t t' T, 
+  Has_Type [] t T -> step t t' -> Has_Type [] t' T.
+ Proof.
+   intros t t' T H H1. generalize dependent T. induction H1; intros; 
+   try (inversion H; subst; eauto with lambda_db; fail).
+   - inversion H0. subst. inversion H4. subst. eapply substitution_aux; eassumption.
+   - inversion H. inversion H3. subst. constructor.
+   - inversion H. subst. inversion H3.  constructor.
+   - inversion H. inversion H3. subst. constructor.
+   - inversion H. subst. inversion H3. subst. constructor.
+ Qed.
+
