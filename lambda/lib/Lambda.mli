@@ -6,8 +6,6 @@ type l_type =
 | LT_bool
 | LT_arrow of l_type * l_type
 
-val type_to_string : l_type -> char list
-
 type term =
 | TM_var of char list
 | TM_app of term * term
@@ -19,6 +17,12 @@ type term =
 | TM_iszero
 | TM_succ
 | TM_pred
+
+val nat_to_string : nat -> char list
+
+val type_to_string : l_type -> char list
+
+val term_to_string : term -> char list
 
 type context = (char list * l_type) list
 

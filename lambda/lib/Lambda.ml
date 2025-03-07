@@ -6,6 +6,24 @@ type l_type =
 | LT_bool
 | LT_arrow of l_type * l_type
 
+type term =
+| TM_var of char list
+| TM_app of term * term
+| TM_abs of char list * l_type * term
+| TM_true
+| TM_false
+| TM_nat of nat
+| TM_if of term * term * term
+| TM_iszero
+| TM_succ
+| TM_pred
+
+(** val nat_to_string : nat -> char list **)
+
+let rec nat_to_string = function
+| O -> '0'::[]
+| S m -> append ('S'::(' '::[])) (nat_to_string m)
+
 (** val type_to_string : l_type -> char list **)
 
 let rec type_to_string = function
@@ -21,17 +39,35 @@ let rec type_to_string = function
   let s2 = type_to_string ty2 in
   append s1 (append (' '::('-'::('>'::(' '::[])))) s2)
 
-type term =
-| TM_var of char list
-| TM_app of term * term
-| TM_abs of char list * l_type * term
-| TM_true
-| TM_false
-| TM_nat of nat
-| TM_if of term * term * term
-| TM_iszero
-| TM_succ
-| TM_pred
+(** val term_to_string : term -> char list **)
+
+let rec term_to_string = function
+| TM_var x -> x
+| TM_app (t1, t2) ->
+  append ('('::[])
+    (append (term_to_string t1)
+      (append (' '::[]) (append (term_to_string t2) (')'::[]))))
+| TM_abs (x, l, t0) ->
+  append ('('::[])
+    (append ('f'::('u'::('n'::(' '::[]))))
+      (append x
+        (append (' '::(':'::(' '::[])))
+          (append (type_to_string l)
+            (append (' '::('='::('>'::(' '::[]))))
+              (append (term_to_string t0) (')'::[])))))))
+| TM_true -> 't'::('r'::('u'::('e'::[])))
+| TM_false -> 'f'::('a'::('l'::('s'::('e'::[]))))
+| TM_nat n -> nat_to_string n
+| TM_if (t1, t2, t3) ->
+  append ('i'::('f'::(' '::[])))
+    (append (term_to_string t1)
+      (append (' '::('t'::('h'::('e'::('n'::(' '::[]))))))
+        (append (term_to_string t2)
+          (append (' '::('e'::('l'::('s'::('e'::(' '::[]))))))
+            (term_to_string t3)))))
+| TM_iszero -> 'i'::('s'::('z'::('e'::('r'::('o'::[])))))
+| TM_succ -> 's'::('u'::('c'::('c'::[])))
+| TM_pred -> 'p'::('r'::('e'::('d'::[])))
 
 type context = (char list * l_type) list
 

@@ -17,21 +17,6 @@ Inductive l_type : Type :=
   | LT_arrow : l_type -> l_type -> l_type.
 
 
-(* útil para a extração *)
-Fixpoint type_to_string (ty : l_type) : string :=
-  match ty with
-  | LT_nat => "nat"
-  | LT_bool => "bool"
-  | LT_arrow ty1 ty2 =>
-      let s1 :=
-        match ty1 with
-        | LT_arrow _ _ => "(" ++ type_to_string ty1 ++ ")"
-        | _ => type_to_string ty1
-        end in
-      let s2 := type_to_string ty2 in
-      s1 ++ " -> " ++ s2
-  end.
-
 Inductive term : Type :=
   | TM_var : string -> term
   | TM_app : term -> term -> term
@@ -55,6 +40,41 @@ Inductive value : term -> Prop :=
   | VNat     : forall n, value (TM_nat n).
 
 
+(* ÚTIL PARA A EXTRAÇÃO *)
+
+Fixpoint nat_to_string (n : nat) : string :=
+  match n with
+  | O => "0"
+  | S m => "S " ++ nat_to_string m
+  end.
+
+Fixpoint type_to_string (ty : l_type) : string :=
+  match ty with
+  | LT_nat => "nat"
+  | LT_bool => "bool"
+  | LT_arrow ty1 ty2 =>
+      let s1 :=
+        match ty1 with
+        | LT_arrow _ _ => "(" ++ type_to_string ty1 ++ ")"
+        | _ => type_to_string ty1
+        end in
+      let s2 := type_to_string ty2 in
+      s1 ++ " -> " ++ s2
+  end.
+
+Fixpoint term_to_string (t : term) : string :=
+  match t with
+  | TM_var x => x
+  | TM_app t1 t2 => "(" ++ term_to_string t1 ++ " " ++ term_to_string t2 ++ ")"
+  | TM_abs x l t => "("  ++  "fun " ++ x ++ " : " ++ type_to_string l ++ " => " ++ term_to_string t ++ ")"
+  | TM_true => "true"
+  | TM_false => "false"
+  | TM_nat n => nat_to_string n
+  | TM_if t1 t2 t3 => "if " ++ term_to_string t1 ++ " then " ++ term_to_string t2 ++ " else " ++ term_to_string t3
+  | TM_iszero => "iszero"
+  | TM_succ => "succ"
+  | TM_pred => "pred"
+  end.
 
 (** 1.1 Contexto e substituição *)
 

@@ -7,5 +7,6 @@ Require Import Coq.extraction.Extraction.
 Extraction Language OCaml.
 Set Extraction Output Directory "lambda/lib".
 
-Separate Extraction Lambda.get_type Lambda.type_to_string.
+Separate Extraction Lambda.get_type Lambda.term_to_string Lambda.type_to_string.
+  
   
