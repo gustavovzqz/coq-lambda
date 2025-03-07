@@ -4,10 +4,39 @@ Import ListNotations.
 Require Import String.
 Require Import Bool.
 Open Scope string_scope. 
+
 Create HintDb lambda_db.
 From Coq Require Import Setoids.Setoid.
 
-(* ################################################################# *)
+(* ################################################################# 
+
+
+                         (* SUMÁRIO *)
+
+
+   1. Definições Básicas 
+
+   2. Definições de Propriedades
+      2.1 Possuir tipo T
+      2.2 Reduzir para t'
+
+   3. Teorema do Progresso
+      3.1 Formas Canônicas
+      3.2 Teorema Principal
+   
+   4. Unicidade
+
+   5. Definição de Função para Extrair o Tipo
+
+   6. Equivalência da Função de Extrair Tipo para a Propriedade (2.1)
+      6.1 Funções Auxiliares
+      6.2 Teorema Principal
+
+   7. Preservação (incompleto)
+      Aqui, dois lemas não foram provados! 
+
+
+  ################################################################# *)
 
 (*** 1. Definições Básicas *)
 
@@ -197,7 +226,7 @@ Inductive step : term -> term -> Prop :=
             step (TM_if t1 t2 t3) (TM_if t1' t2 t3).
 
 
-(* Adicionando todos os construtores anteriores no lambda_db! *)
+(* Adicionando todos os construtores anteriores ao lambda_db! *)
 
 Hint Constructors l_type : lambda_db.
 Hint Constructors value : lambda_db.
