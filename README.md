@@ -2,8 +2,8 @@
 
 ## Estrutura de Diretórios
 
-- `theories/lambda/`: Contém as provas, propriedades e afins relacionadas ao cálculo lambda.
-- `extraction/extraction.v`: Arquivo de extração em Coq.
+- `theories/Lambda/`: Contém as provas, propriedades e afins relacionadas ao cálculo lambda.
+- `extraction/Extraction.v`: Arquivo de extração em Coq.
 - `lambda/`: Contém o código extraído para OCaml, incluindo um exemplo no arquivo 'bin/main.ml'.
 
 ## Compilação
