@@ -1,7 +1,5 @@
 # Lambda Calculus in Coq
 
-# Organização do Diretório
-
 ## Estrutura de Diretórios
 
 - `theories/lambda/`: Contém as provas, propriedades e afins relacionadas ao cálculo lambda.
