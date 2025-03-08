@@ -23,7 +23,8 @@ From Coq Require Import Setoids.Setoid.
       3.2 Teorema Principal
    
    4. Unicidade
-5. Definição de Função para Extrair o Tipo
+
+   5. Definição de Função para Extrair o Tipo
 
    6. Equivalência da Função de Extrair Tipo para a Propriedade (2.1)
       6.1 Funções Auxiliares
