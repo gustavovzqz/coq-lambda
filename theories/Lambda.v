@@ -4,8 +4,6 @@ Import ListNotations.
 Require Import String.
 Require Import Bool.
 Open Scope string_scope. 
-
-Create HintDb lambda_db.
 From Coq Require Import Setoids.Setoid.
 
 (* ################################################################# 
@@ -25,20 +23,24 @@ From Coq Require Import Setoids.Setoid.
       3.2 Teorema Principal
    
    4. Unicidade
-
-   5. Definição de Função para Extrair o Tipo
+5. Definição de Função para Extrair o Tipo
 
    6. Equivalência da Função de Extrair Tipo para a Propriedade (2.1)
       6.1 Funções Auxiliares
       6.2 Teorema Principal
 
-   7. Preservação (incompleto)
-      Aqui, dois lemas não foram provados! 
-
+   7. Preservação 
+      7.1 Weakening
+      7.2 Propriedades sobre o Contexto 
+      7.3 Propriedades do Contexto na Tipagem 
+      7.4 Substituição Preserva Tipos 
+      7.5 Teorema Principal 
 
   ################################################################# *)
 
 (*** 1. Definições Básicas *)
+
+Create HintDb lambda_db.
 
 Inductive l_type : Type :=
   | LT_nat : l_type
@@ -568,8 +570,9 @@ Qed.
 (* ================================================================= *)
 
 
-(** 7.0 Preservação  *)
+(*** 7.0 Preservação  *)
 
+(** 7.1 Weakening  *)
 
 Definition included_in l l' := forall k v, 
   find k l = Some v -> find k l' = Some v.
@@ -583,10 +586,60 @@ Proof.
   - apply H. assumption.
 Qed.
 
+Lemma included_in_refl : forall l, 
+  included_in l l.
+Proof.
+  unfold included_in. intros. assumption.
+Qed.
+
+Lemma weakening : forall G G' t T,
+  included_in G G' ->
+  Has_Type G  t T ->
+  Has_Type G' t T.
+Proof.
+  intros. generalize dependent G'. induction H0; eauto with lambda_db; intros.
+  assert (included_in ((x, A) :: G) ((x, A) :: G')).
+  { apply included_in_add, H. }
+  apply T_abs,IHHas_Type, H1.
+Qed.
+
+Lemma weakening_empty : forall G t T,
+  Has_Type [] t T ->
+  Has_Type G t T.
+Proof.
+  intros. eapply weakening with ([]).
+  - unfold included_in. intros;  discriminate.
+  - assumption.
+Qed.
 
 
 
-Lemma find_add_twice : forall s h h' G T,
+(* 7.2 Propriedades sobre o Contexto *)
+
+Lemma find_app : forall s l' l T,
+  find s (app l' l) =  Some T <->
+  find s l' = Some T \/ find s l' = None /\ find s l = Some T.
+Proof.
+  intros s. induction l'; split; intros; auto.
+  + simpl. destruct H. 
+    ++ discriminate. 
+    ++ destruct H. assumption. 
+  + rewrite <- app_comm_cons in H. simpl in H. simpl. destruct a. 
+    destruct (s0 =? s).
+    ++ left. assumption.
+    ++ apply IHl'. assumption.
+  + destruct H.
+    ++ rewrite <- app_comm_cons. simpl. simpl in H. destruct a. 
+       destruct (s0 =? s) eqn:E.
+       +++ assumption.
+       +++ apply IHl'. left. assumption.
+    ++ rewrite <- app_comm_cons. simpl. simpl in H. destruct a. destruct (s0 =? s).
+      +++ destruct H. discriminate.
+      +++ destruct H. apply IHl'. right. auto.
+
+Qed.
+
+Lemma find_add_twice : forall s h h' G T ,
   fst h = fst h' ->
   find s (h :: G) = T <->
   find s (h :: (h' :: G)) = T.
@@ -618,75 +671,44 @@ Proof.
     - assumption.
 Qed.
 
-Lemma included_in_refl : forall l, 
-  included_in l l.
-Proof.
-  unfold included_in. intros. assumption.
-Qed.
 
 
-Lemma weakening : forall G G' t T,
-  included_in G G' ->
-  Has_Type G  t T ->
-  Has_Type G' t T.
-Proof.
-  intros. generalize dependent G'. induction H0; eauto with lambda_db; intros.
-  assert (included_in ((x, A) :: G) ((x, A) :: G')).
-  { apply included_in_add, H. }
-  apply T_abs,IHHas_Type, H1.
-Qed.
+(** 7.3 Propriedades do Contexto na Tipagem *)
 
-Lemma weakening_empty : forall G t T,
-  Has_Type [] t T ->
-  Has_Type G t T.
-Proof.
-  intros. eapply weakening with ([]).
-  - unfold included_in. intros;  discriminate.
-  - assumption.
-Qed.
-
-Hint Resolve find_add_shadows : lambda_db.
-Hint Resolve find_add_twice : lambda_db.
-
-
-(* Os dois teoremas abaixo são simples de verificar que são verdade:
-
-  1. O primeiro diz que se dois elementos para variáveis distintas forem adicionados no contexto,
-      então a ordem não faz diferença.
-
-   2. O segundo diz que se dois elementos para uma mesma variável são adicionados no contexto,
-   então o segundo sobrescreve o primeiro. 
-
-   O problema é que com o uso de listas como mapas parciais, fica difícil de conseguir uma 
-   propriedade indutiva forte o suficiente. *)
-
-Lemma Has_Type_Order : forall t T h h' G,
+Lemma Has_Type_Order : forall t T h h' G l,
   fst h <> fst h' ->
-  Has_Type (h :: (h':: G)) t T -> 
-  Has_Type (h':: (h :: G)) t T.
+  Has_Type (app l (h :: (h':: G))) t T -> 
+  Has_Type (app l (h':: (h :: G))) t T.
 Proof.
   induction t; intros; inversion H0; eauto with lambda_db.
-  - subst. apply T_var. apply find_add_shadows in H3.
+  - apply T_var. apply find_app in H3. destruct H3.
+    ++ rewrite find_app. left. assumption.
+    ++ rewrite find_app. right. destruct H3. split.
+       +++ assumption.
+       +++ rewrite find_add_shadows in H5; assumption.
+  - subst. apply T_abs. specialize IHt with (l := ((s,l) :: l0)).
+    apply IHt.
     + assumption.
-    + admit.
-  - subst. apply T_abs. 
-    (* preso ... *)
-Admitted.
+    + exact H6.
+Qed.
 
- 
-
-
-Lemma Has_Type_Shadows : forall t T h h' G,
+Lemma Has_Type_Shadows : forall t T h h' G l,
   fst h = fst h' ->
-  Has_Type (h :: (h':: G)) t T -> 
-  Has_Type (h :: G) t T.
+  Has_Type (app l (h :: (h':: G))) t T -> 
+  Has_Type (app l (h :: G)) t T.
 Proof.
   induction t; intros; inversion H0; eauto with lambda_db.
-  - apply T_var. simpl. admit.
-  - subst. apply T_abs.
-    (* Exatamente o mesmo problema que o anterior ... *)
-Admitted.
+  - apply T_var. simpl. apply find_app in H3. destruct H3.
+    ++ rewrite find_app. left. assumption.
+    ++ rewrite find_app. right. destruct H3. split.
+       +++ assumption.
+       +++ rewrite <- find_add_twice in H5; assumption.
+  - subst. apply T_abs. specialize IHt with (l := (s,l) :: l0).
+    eapply IHt; eassumption.
+Qed.
 
+
+(** 7.4 Substituição Preserva Tipos *)
 
 Lemma substitution_aux : forall t Gamma x U  v T ,
    Has_Type ((x, U) :: Gamma) t T ->
@@ -699,14 +721,17 @@ Proof.
       + injection H1 as H1. subst. apply weakening_empty, H0.
       + apply T_var, H1.
     - destruct (s =? x) eqn:E.
-      + apply T_abs. apply Has_Type_Shadows with (x, U).
+      + apply T_abs. apply Has_Type_Shadows with (l := nil) (h' := (x, U)).
         ++ simpl. rewrite String.eqb_eq in E. assumption.
         ++ assumption.
       + apply T_abs. apply IHt with (U); try assumption.
-        apply Has_Type_Order. 
+        apply Has_Type_Order with (l := nil). 
         ++ rewrite String.eqb_neq in E. simpl. assumption.
         ++ assumption.
 Qed.
+
+
+(** 7.5 Teorema Principal *)
 
 Theorem preservation: forall t t' T, 
   Has_Type [] t T -> step t t' -> Has_Type [] t' T.
@@ -719,4 +744,9 @@ Theorem preservation: forall t t' T,
    - inversion H. inversion H3. subst. constructor.
    - inversion H. subst. inversion H3. subst. constructor.
  Qed.
+
+
+(* ================================================================= *)
+
+
 
